@@ -3,30 +3,52 @@
 class QueryBuilder
 {
 	private $_dbManager = null;
+	
+	private $_dataToInsertArray = array();
+	// Insert query clauses;
+	private $queryInsertClause="";
+	private $queryValuesClause="";
+	
 	private $_sensorName = null;
 	private $_location = null;
 	private $_dateFrom = null;
 	private $_dateTo = null;
 	private $_aggregate = null; // boolean
 	
+	// Select query clauses...
 	private $querySelectClause="";
 	private $queryFromClause="";
 	private $queryWhereClause="";
 	private $queryJoinConnectionClause="";
 	private $queryGroupByClause="";
 
-	public function __construct() {
-		$this->_aggregate = true; // default value
+
+	public function __construct($queryType) {
+		if($queryType == "select") {
+			$this->_aggregate = true; // default value
 		
-		// Date default values is today...
-		$this->dateFrom = date("yyyy-mm-dd");
-		$this->dateTo= date("yyyy-mm-dd h:i:s");
+			// Date default values is today...
+			$this->dateFrom = date("yyyy-mm-dd");
+			$this->dateTo= date("yyyy-mm-dd h:i:s");
 		
-		$this->queryFromClause = " FROM ".DatabaseManager::TABLE_DATA.", ".DatabaseManager::TABLE_DICTIONARY." ";
-		$this->queryJoinConnectionClause = " ".DatabaseManager::TABLE_DATA.".".DatabaseManager::KEY_SENSOR_NAME_ID." = "
-							.DatabaseManager::TABLE_DICTIONARY.".".DatabaseManager::KEY_ID." ";
+			$this->queryFromClause = " FROM ".DatabaseManager::TABLE_DATA.", ".DatabaseManager::TABLE_DICTIONARY." ";
+			$this->queryJoinConnectionClause = 
+			" ".DatabaseManager::TABLE_DATA.".".DatabaseManager::KEY_SENSOR_NAME_ID." = "
+			.DatabaseManager::TABLE_DICTIONARY.".".DatabaseManager::KEY_ID." ";
+		}
+		else if ("insert"){
+    			$this->queryInsertClause = "INSERT INTO ".DatabaseManager::TABLE_DATA." ("
+    			.DatabaseManager::KEY_DATETIME.", "
+    			.DatabaseManager::KEY_LOCATION.", "
+    			.DatabaseManager::KEY_SENSOR_NAME_ID.", "
+    			.DatabaseManager::KEY_SENSOR_VALUE.") VALUES ";
+		}
     	}
     	
+    	public function setInsertDataString($jsonDataString) {
+		$this->_dataToInsertArray = $this->parseAndTransformJSON($jsonDataString);
+    	}
+
     	public function setDBManager(DatabaseManager $dbManager) {
     		$this->_dbManager = $dbManager;
     	}
@@ -67,7 +89,58 @@ class QueryBuilder
     		$this->_aggregate = $wantAggregateResults;
     	}
     	   	
-    	public function getQuery() {
+    	public function getInsertQuery() {
+    		for($i=0 ; $i<sizeof($this->_dataToInsertArray) ; $i++) {
+    			$this->queryValuesClause .= " ('". $this->_dataToInsertArray[$i]['datetime'] ."', "
+    									." '". $this->_dataToInsertArray[$i]['location'] ."', "
+    									." ".DatabaseManager::FUNCTION_GET_ID_FROM_SENSOR_NAME
+    									."('". $this->_dataToInsertArray[$i]['sensor_name'] ."'), "
+    									." ". $this->_dataToInsertArray[$i]['sensor_value'] .")";
+    			if($i != sizeof($this->_dataToInsertArray)-1) {
+    				$this->queryValuesClause .= ", ";
+    			}
+    		}
+		$query = $this->queryInsertClause.$this->queryValuesClause.";";
+		$this->clearQueryClauses();
+    		return $query;
+    	}
+	
+    	private function parseAndTransformJSON($jsonDataString) {
+    		// Decode the JSON string.
+    		$dataArrayOfArrays = json_decode($jsonDataString, true);
+
+    		// Get the assoc array keys from its first element (should be the same for all).
+    		$keysArray = array_keys($dataArrayOfArrays[0]);
+    		
+    		// Create new array where each sensor type value will have its own subarray element.
+   	 	$newDataArray = array();
+    		for($i=0 ; $i<sizeof($dataArrayOfArrays) ; $i++) {
+    			for($j=0 ; $j<sizeof($keysArray) ; $j++) {
+    				if($keysArray[$j] != 'datetime' && $keysArray[$j] != 'location' ) 
+    				{
+    					// We need to transform the datetime from 
+    					// string to a PHP Date object first...
+    					$timestamp = strtotime($dataArrayOfArrays[$i]['datetime']);
+    					$date = date("Y-m-d H:i:s", $timestamp);
+    					
+    					if(!isset($date) || !isset($dataArrayOfArrays[$i]['location'])
+    						|| !isset($keysArray[$j]) || !isset($dataArrayOfArrays[$i][$keysArray[$j]])) {
+    						continue;
+    					}
+    					
+    					// Then create a new array...
+    					$newDataArray[] = array( 
+    						'datetime' => $date,
+    						'location' => $dataArrayOfArrays[$i]['location'],
+    						'sensor_name' => $keysArray[$j],
+    						'sensor_value' => $dataArrayOfArrays[$i][$keysArray[$j]] );
+    				}
+    			}
+    		}
+    		return $newDataArray;
+    	}
+
+    	public function getSelectQuery() {
     		$this->escapeParamStrings();
     		
     		if($this->_aggregate == true) {
@@ -148,6 +221,7 @@ class QueryBuilder
     		$this->querySelectClause="";
 		$this->queryWhereClause="";
 		$this->queryGroupByClause="";
+		$this->queryValuesClause="";
     	}
 }
 

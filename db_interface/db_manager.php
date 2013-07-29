@@ -22,6 +22,9 @@ class DatabaseManager
 	const KEY_SENSOR_NAME_ID = "sensor_name_id";
 	const KEY_SENSOR_VALUE = "sensor_value";
 	
+	// SQL Utility function name...
+	const FUNCTION_GET_ID_FROM_SENSOR_NAME = "get_sensor_name_id";
+	
 	public function __construct() {
 		$this->openConnection();
 	}
@@ -39,8 +42,8 @@ class DatabaseManager
 		mysqli_close($this->_DBCONN);
 	}
 	
-	public function selectQuery(QueryBuilder $querybuilder) {
-		$query = $querybuilder->getQuery();
+	public function runSelectQuery(QueryBuilder $querybuilder) {
+		$query = $querybuilder->getSelectQuery();
 		$resultSet = mysqli_query($this->_DBCONN, $query) or die("Query Error: ".mysqli_error($this->_DBCONN));
 
 		$results = array();
@@ -48,6 +51,17 @@ class DatabaseManager
 			$results[] = $row;
 		}
 		return $results;
+	}
+	
+	public function runInsertQuery(QueryBuilder $querybuilder) {
+		$query = $querybuilder->getInsertQuery();
+		$wasSuccessfull = mysqli_query($this->_DBCONN, $query) or die("Query Error: ".mysqli_error($this->_DBCONN));
+		if($wasSuccessfull) {
+			return true;
+		}
+		else {
+			return false;
+		}
 	}
 	
 	public function getDBConn() {

@@ -1,13 +1,13 @@
 <?php
 include 'db_interface/db_manager.php';
 
-
-$queryBuilder = new QueryBuilder();
+$queryBuilder = new QueryBuilder("select");
 $dbManager = new DatabaseManager();
 
+// ===================== Select with aggregation test ==================== //
 $queryBuilder->setDBManager($dbManager);
-// Aggregate is true here...
-$resultsArray = $dbManager->selectQuery($queryBuilder);
+// Aggregate is true (by default) here...
+$resultsArray = $dbManager->runSelectQuery($queryBuilder);
 for($i=0 ; $i<sizeof($resultsArray) ; $i++) {
 	echo $resultsArray[$i]["DATE(datetime)"]
 	." ".$resultsArray[$i]["location"]
@@ -18,8 +18,9 @@ for($i=0 ; $i<sizeof($resultsArray) ; $i++) {
 	."<br>";
 }
 
+// ===================== Select without aggregation test ==================== //
 $queryBuilder->setAggregate(false);
-$resultsArray = $dbManager->selectQuery($queryBuilder);
+$resultsArray = $dbManager->runSelectQuery($queryBuilder);
 for($i=0 ; $i<sizeof($resultsArray) ; $i++) {
 	echo $resultsArray[$i]["datetime"]
 	." ".$resultsArray[$i]["location"]
@@ -28,7 +29,17 @@ for($i=0 ; $i<sizeof($resultsArray) ; $i++) {
 	."<br>";
 }
 
+/* ===================== Insert test ==================== //
+// Testing insert operation by using a data json file. Normally this 
+// data would originate from a client POST request...
 
+$queryBuilder = new QueryBuilder("insert");
+$queryBuilder->setInsertDataString(file_get_contents('data.json'));
+$queryBuilder->setDBManager($dbManager);
+$success = $dbManager->runInsertQuery($queryBuilder);
+if($success) {
+	echo "Insert query was run successfully...";
+}
+*/
 unset($dbManager);
-
 ?>
