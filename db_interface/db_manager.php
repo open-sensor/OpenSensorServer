@@ -45,12 +45,7 @@ class DatabaseManager
 	public function runSelectQuery(QueryBuilder $querybuilder) {
 		$query = $querybuilder->getSelectQuery();
 		$resultSet = mysqli_query($this->_DBCONN, $query) or die("Query Error: ".mysqli_error($this->_DBCONN));
-
-		$results = array();
-		while($row = mysqli_fetch_array($resultSet)) {
-			$results[] = $row;
-		}
-		return $results;
+		return DataParser::fromDBResultsToJSON($querybuilder, $resultSet);
 	}
 	
 	public function runInsertQuery(QueryBuilder $querybuilder) {

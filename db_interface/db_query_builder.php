@@ -1,4 +1,5 @@
 <?php
+include 'data_parser.php';
 
 class QueryBuilder
 {
@@ -46,7 +47,7 @@ class QueryBuilder
     	}
     	
     	public function setInsertDataString($jsonDataString) {
-		$this->_dataToInsertArray = $this->parseAndTransformJSON($jsonDataString);
+		$this->_dataToInsertArray = DataParser::fromJSONToArray($jsonDataString);
     	}
 
     	public function setDBManager(DatabaseManager $dbManager) {
@@ -69,24 +70,20 @@ class QueryBuilder
     		$this->_dateTo = $dateto;
     	}
     	
-    	public function removeSensorName() {
+    	public function clearParams() {
     		$this->_sensorName = null;
-    	}
-    	
-    	public function removeLocation() {
-    		$this->_location = null;
-    	}
-    	
-    	public function removeDateFrom() {
-    		$this->_dateFrom = null;
-    	}
-    	
-    	public function removeDateTo() {
-    		$this->_dateTo = null;
+		$this->_location = null;
+		$this->_dateFrom = null;
+		$this->_dateTo = null;
+		$this->_aggregate = null;
     	}
     	
     	public function setAggregate($wantAggregateResults) {
     		$this->_aggregate = $wantAggregateResults;
+    	}
+    	
+    	public function getAggregate() {
+    		return $this->_aggregate;
     	}
     	   	
     	public function getInsertQuery() {
@@ -103,41 +100,6 @@ class QueryBuilder
 		$query = $this->queryInsertClause.$this->queryValuesClause.";";
 		$this->clearQueryClauses();
     		return $query;
-    	}
-	
-    	private function parseAndTransformJSON($jsonDataString) {
-    		// Decode the JSON string.
-    		$dataArrayOfArrays = json_decode($jsonDataString, true);
-
-    		// Get the assoc array keys from its first element (should be the same for all).
-    		$keysArray = array_keys($dataArrayOfArrays[0]);
-    		
-    		// Create new array where each sensor type value will have its own subarray element.
-   	 	$newDataArray = array();
-    		for($i=0 ; $i<sizeof($dataArrayOfArrays) ; $i++) {
-    			for($j=0 ; $j<sizeof($keysArray) ; $j++) {
-    				if($keysArray[$j] != 'datetime' && $keysArray[$j] != 'location' ) 
-    				{
-    					// We need to transform the datetime from 
-    					// string to a PHP Date object first...
-    					$timestamp = strtotime($dataArrayOfArrays[$i]['datetime']);
-    					$date = date("Y-m-d H:i:s", $timestamp);
-    					
-    					if(!isset($date) || !isset($dataArrayOfArrays[$i]['location'])
-    						|| !isset($keysArray[$j]) || !isset($dataArrayOfArrays[$i][$keysArray[$j]])) {
-    						continue;
-    					}
-    					
-    					// Then create a new array...
-    					$newDataArray[] = array( 
-    						'datetime' => $date,
-    						'location' => $dataArrayOfArrays[$i]['location'],
-    						'sensor_name' => $keysArray[$j],
-    						'sensor_value' => $dataArrayOfArrays[$i][$keysArray[$j]] );
-    				}
-    			}
-    		}
-    		return $newDataArray;
     	}
 
     	public function getSelectQuery() {

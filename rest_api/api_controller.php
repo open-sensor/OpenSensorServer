@@ -1,5 +1,5 @@
 <?php
-include 'db_manager.php';
+include 'db_interface/db_manager.php';
 
 class APIController
 {
@@ -37,10 +37,80 @@ class APIController
 		return false;
 	}
 
+	private function testInsert() {
+		$dbManager = new DatabaseManager();
+		$queryBuilder = new QueryBuilder("insert");
+		$queryBuilder->setInsertDataString(file_get_contents('data.json'));
+		
+		// Insert statements require to set the dbManager object...
+		$queryBuilder->setDBManager($dbManager);
+		$success = $dbManager->runInsertQuery($queryBuilder);
+		if($success) {
+			echo "Insert query was run successfully...";
+		}
+		
+		unset($dbManager);
+		unset($queryBuilder);
+	}
+	
+	private function testSelect() {
+		$dbManager = new DatabaseManager();
+		$queryBuilder = new QueryBuilder("select");
+		$queryBuilder->setAggregate(false);
+		$resultsJSON = $dbManager->runSelectQuery($queryBuilder);
+		echo $resultsJSON;
+		
+		unset($dbManager);
+		unset($queryBuilder);
+		unset($resultsJSON);
+	}
 
 	public function handleRequest()
 	{
+		if(isset($_GET['var1'])) {
+			$var1 = $_GET['var1'];
+		}
+		
+		if(isset($_GET['var2'])) {
+			$var2 = $_GET['var2'];
+		}		
+		
+		if(isset($_GET['url_invalid'])) {
+			if($_GET['url_invalid'] == "true") {
+				echo "URL Invalid...<br>";
+			}
+		}
+		
+		$this->testSelect();
+		
+		$method = $_SERVER["REQUEST_METHOD"];
+		$accept = $_SERVER["HTTP_ACCEPT"];
+		
+		echo "Method: ".$method.", Accept: ".$accept."<br>";
+		if(isset($var1)) {
+			echo "var1: ".$var1."<br>";
+		}
+		
+		if(isset($var2)) {
+			echo "var2: ".$var2."<br>";
+		}
+		
 
+	/*	// Check if the variables given in the form of URI are valid resources.
+		if(!$this->isFirstVarValid($var1)) {
+			$this->_Status = 404;
+			return;
+		}
+		if(!$this->isSecondVarValid($var2)) {
+			$this->_Status = 404;
+			return;
+		}
+
+		if($method == "GET") {
+			if ($var1 == "data") {
+				
+			}
+		}*/
 	}
 
 	public function sendResponse()
