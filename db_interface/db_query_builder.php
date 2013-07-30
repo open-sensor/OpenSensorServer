@@ -26,7 +26,7 @@ class QueryBuilder
 
 	public function __construct($queryType) {
 		if($queryType == "select") {
-			$this->_aggregate = true; // default value
+			$this->_aggregate = "false"; // default value
 		
 			// Date default values is today...
 			$this->dateFrom = date("yyyy-mm-dd");
@@ -47,7 +47,15 @@ class QueryBuilder
     	}
     	
     	public function setInsertDataString($jsonDataString) {
-		$this->_dataToInsertArray = DataParser::fromJSONToArray($jsonDataString);
+    		$data = DataParser::fromJSONToArray($jsonDataString);
+		if($data == false) {
+			return false;
+		}
+		else {
+			$this->_dataToInsertArray = $data;
+			return true;
+		}
+		
     	}
 
     	public function setDBManager(DatabaseManager $dbManager) {
@@ -85,7 +93,7 @@ class QueryBuilder
     	public function getAggregate() {
     		return $this->_aggregate;
     	}
-    	   	
+
     	public function getInsertQuery() {
     		for($i=0 ; $i<sizeof($this->_dataToInsertArray) ; $i++) {
     			$this->queryValuesClause .= " ('". $this->_dataToInsertArray[$i]['datetime'] ."', "
@@ -105,7 +113,7 @@ class QueryBuilder
     	public function getSelectQuery() {
     		$this->escapeParamStrings();
     		
-    		if($this->_aggregate == true) {
+    		if($this->_aggregate == "true") {
     			$this->querySelectClause = "SELECT "
     			.DatabaseManager::KEY_LOCATION.", "
     			.DatabaseManager::KEY_SENSOR_NAME.", "
@@ -118,7 +126,7 @@ class QueryBuilder
     								.DatabaseManager::KEY_LOCATION.", "
     								.DatabaseManager::KEY_SENSOR_NAME." ";
     		}
-    		else {
+    		else if ($this->_aggregate == "false") {
     			$this->querySelectClause = "SELECT "
     			.DatabaseManager::TABLE_DATA.".".DatabaseManager::KEY_DATETIME.", "
     			.DatabaseManager::TABLE_DATA.".".DatabaseManager::KEY_LOCATION.", "
@@ -149,9 +157,8 @@ class QueryBuilder
 				$this->queryWhereClause.
 				$this->queryJoinConnectionClause.
 				$this->queryGroupByClause.";";
-				
 		$this->clearQueryClauses();
-		
+
     		return $query;
     	}
     	

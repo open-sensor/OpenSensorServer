@@ -5,7 +5,6 @@ include 'rest_api/api_controller.php';
 It handles the HTTP request using an APIController object. */
 $apiController = new APIController();
 $apiController->handleRequest();
-//$apiController->sendResponse();
+$apiController->sendResponse();
 unset($apiController);
-echo "mod_rewrite works!";
 ?>

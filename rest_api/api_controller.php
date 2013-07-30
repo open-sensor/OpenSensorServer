@@ -7,110 +7,156 @@ class APIController
 	private $_Body = "";
 	private $_ContentType = "text/html";
 
-//	private $_FirstVarList = array("data", "status", "location", "datetime", "sensorlist");
+	private $_AllVarsList = array("batch_request", "url_invalid", 
+						"sensor_name", "location", 
+						"datefrom", "dateto", "aggregate");
+
+	private $_CurrentValuesList = array();
+	private $_CurrentVarsList = array();
+	private $_IsRequestUrlValid = null;
+	private $_CurrentQueryBuilder = null;
 
 	function __construct() {
-		
+
     	}
 
-	// Check if the first variable is one of the valid/expected, as described in the
-	// appropriate URI list specification.
-	private function isFirstVarValid($var1) {
-		foreach ($this->_FirstVarList as $command) {
-			if($var1 == $command) {
-				return true;
+	// Gather and check if the any of the variables that were set are of the valid/expected,
+	// as described in the appropriate URI scheme specification.
+	private function gatherGETVariablesAndValidateRequestUrl() {		
+		// Check if the base url (/senseapi/data) is valid...	
+		if(isset($_GET['url_invalid'])) {
+			if($_GET['url_invalid'] == 'true') {
+				$this->_IsRequestUrlValid = false;
+				return;
 			}
 		}
-		return false;
-	}
-
-	// Check if the second variable is one of the valid/expected, as described in the
-	// appropriate URI list specification.
-	private function isSecondVarValid($var2) {
-	//	$secondVarList = $this->_DataReader->getSerialCommandList();
-		$secondVarList[] = "";
-		foreach ($secondVarList as $command) {
-			if($var2 == $command) {
-				return true;
+		// The base url is valid, check for the GET variables now...
+		foreach($this->_AllVarsList as $variable) {
+			if(isset($_GET[$variable]) && $_GET[$variable] != "" && $variable != 'url_invalid') {
+				$this->_CurrentVarsList[] = $variable;
+				$this->_CurrentValuesList[$variable] = $_GET[$variable];
+				$this->_IsRequestUrlValid = true;
 			}
 		}
-		return false;
-	}
-
-	private function testInsert() {
-		$dbManager = new DatabaseManager();
-		$queryBuilder = new QueryBuilder("insert");
-		$queryBuilder->setInsertDataString(file_get_contents('data.json'));
-		
-		// Insert statements require to set the dbManager object...
-		$queryBuilder->setDBManager($dbManager);
-		$success = $dbManager->runInsertQuery($queryBuilder);
-		if($success) {
-			echo "Insert query was run successfully...";
-		}
-		
-		unset($dbManager);
-		unset($queryBuilder);
 	}
 	
-	private function testSelect() {
-		$dbManager = new DatabaseManager();
-		$queryBuilder = new QueryBuilder("select");
-		$queryBuilder->setAggregate(false);
-		$resultsJSON = $dbManager->runSelectQuery($queryBuilder);
-		echo $resultsJSON;
-		
-		unset($dbManager);
-		unset($queryBuilder);
-		unset($resultsJSON);
+	private function validateAndSetGETData($queryBuilder) {
+		for($i=0 ; $i<sizeof($this->_CurrentVarsList) ; $i++) {
+			if($this->_CurrentVarsList[$i] == "sensor_name") {
+				$isOk = DataParser::checkSensorName($this->_CurrentValuesList[$this->_CurrentVarsList[$i]]);
+				if(!$isOk) {
+					return false;
+				}
+				else {
+					$queryBuilder->setSensorName($this->_CurrentValuesList[$this->_CurrentVarsList[$i]]);
+				}
+			}
+			else if($this->_CurrentVarsList[$i] == "aggregate") {
+				if($this->_CurrentValuesList[$this->_CurrentVarsList[$i]] != "true" &&
+					$this->_CurrentValuesList[$this->_CurrentVarsList[$i]] != "false"){
+					return false;
+				}
+				else {
+					$queryBuilder->setAggregate($this->_CurrentValuesList[$this->_CurrentVarsList[$i]]);
+				}
+			}
+			else if($this->_CurrentVarsList[$i] == "dateto" || $this->_CurrentVarsList[$i] == "datefrom") {
+				$isOk = strtotime($this->_CurrentValuesList[$this->_CurrentVarsList[$i]]);
+				if($isOk == false) {
+					return false;
+				}
+				else {
+					if($this->_CurrentVarsList[$i] == "dateto") {
+						$queryBuilder->setDateTo($this->_CurrentValuesList[$this->_CurrentVarsList[$i]]);
+					} else if($this->_CurrentVarsList[$i] == "datefrom"){
+						$queryBuilder->setDateFrom($this->_CurrentValuesList[$this->_CurrentVarsList[$i]]);
+					}
+				}
+			} // Location cannot be validated at the moment (its just any string)...
+			else if($this->_CurrentVarsList[$i] == "location") {
+				$queryBuilder->setLocation($this->_CurrentValuesList[$this->_CurrentVarsList[$i]]);
+			}
+		}
+		return $queryBuilder;
 	}
+
+	private function performInsert($dataToStore) {
+		$dbManager = new DatabaseManager();
+		$queryBuilder = new QueryBuilder("insert");
+		
+		$isOk = $queryBuilder->setInsertDataString($dataToStore);
+		if($isOk) {
+			$success = $dbManager->runInsertQuery($queryBuilder);
+			if(!$success) {
+				unset($dbManager);
+				unset($queryBuilder);
+				return false;
+			}
+			return true;
+		}
+		else {
+			unset($dbManager);
+			unset($queryBuilder);
+			return false;
+		}
+	}
+
 
 	public function handleRequest()
 	{
-		if(isset($_GET['var1'])) {
-			$var1 = $_GET['var1'];
-		}
-		
-		if(isset($_GET['var2'])) {
-			$var2 = $_GET['var2'];
-		}		
-		
-		if(isset($_GET['url_invalid'])) {
-			if($_GET['url_invalid'] == "true") {
-				echo "URL Invalid...<br>";
-			}
-		}
-		
-		$this->testSelect();
-		
+		$this->gatherGETVariablesAndValidateRequestUrl();
 		$method = $_SERVER["REQUEST_METHOD"];
 		$accept = $_SERVER["HTTP_ACCEPT"];
 		
-		echo "Method: ".$method.", Accept: ".$accept."<br>";
-		if(isset($var1)) {
-			echo "var1: ".$var1."<br>";
-		}
-		
-		if(isset($var2)) {
-			echo "var2: ".$var2."<br>";
-		}
-		
-
-	/*	// Check if the variables given in the form of URI are valid resources.
-		if(!$this->isFirstVarValid($var1)) {
-			$this->_Status = 404;
-			return;
-		}
-		if(!$this->isSecondVarValid($var2)) {
-			$this->_Status = 404;
-			return;
+		if($this->_IsRequestUrlValid == false) {
+			if($method == "GET") {
+				$this->_Status = 404;
+				return;
+			}
 		}
 
 		if($method == "GET") {
-			if ($var1 == "data") {
+			if($accept == "application/json") {
+				$dbManager = new DatabaseManager();
+				$queryBuilder = new QueryBuilder("select");
 				
+				// SELECT queries require to set a DatabaseManager object...
+				$queryBuilder->setDBManager($dbManager); 
+				$queryBuilder = $this->validateAndSetGETData($queryBuilder);
+				if($queryBuilder != false) {
+					$resultsJSON = $dbManager->runSelectQuery($queryBuilder);
+					$this->_Body = $resultsJSON;
+					unset($dbManager);
+					unset($queryBuilder);
+					unset($resultsJSON);
+				}
+				else {
+					$this->_Status = 404;
+					unset($dbManager);
+					unset($queryBuilder);
+					unset($resultsJSON);
+					return;
+				}
 			}
-		}*/
+			else {
+				$this->_Status = 406;
+			}
+		}
+		else if($method == "POST") {
+			$dataToStore = file_get_contents('php://input');
+			if($dataToStore != null && $dataToStore != "") {
+				$success = $this->performInsert($dataToStore);
+				if($success) {
+					return;
+				}
+				else {
+					$this->_Status = 404;
+				}
+			}
+		}
+		else {
+			$this->_Status = 405;
+		}
 	}
 
 	public function sendResponse()
@@ -136,6 +182,9 @@ class APIController
 			{
 			case 404:
 				$msg = "The requested resource does not exist.";
+				if($_SERVER["REQUEST_METHOD"] == "POST") {
+					$msg = "Invalid JSON data provided.";
+				}
 				break;
 			case 405:
 				$msg = "The requested method is not allowed.";
@@ -144,7 +193,7 @@ class APIController
 				$msg = "Accepting only 'application/json' MIME type for this resource.";
 				break;
 			case 503:
-				$msg = "The sensor station is unavailable at this time.";
+				$msg = "The server is unavailable at this time.";
 				break;
 			}
 			$this->_Body = '<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
@@ -178,10 +227,6 @@ class APIController
 		);
 		return (isset($codes[$status])) ? $codes[$status] : '';
 	}
-
-	function __destruct() {
-		
-    	}
 }
 
 ?>
