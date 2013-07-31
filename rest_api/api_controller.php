@@ -4,6 +4,7 @@ include 'db_interface/db_manager.php';
 class APIController
 {
 	private $_Status = 200;
+	private $_Message="";
 	private $_Body = "";
 	private $_ContentType = "text/html";
 
@@ -111,6 +112,7 @@ class APIController
 		if($this->_IsRequestUrlValid == false) {
 			if($method == "GET") {
 				$this->_Status = 404;
+				$this->_Message = "The requested resource does not exist.";
 				return;
 			}
 		}
@@ -132,10 +134,10 @@ class APIController
 				}
 				else {
 					$this->_Status = 404;
+					$this->_Message = "Invalid parameter value(s) provided.";
 					unset($dbManager);
 					unset($queryBuilder);
 					unset($resultsJSON);
-					return;
 				}
 			}
 			else {
@@ -143,14 +145,27 @@ class APIController
 			}
 		}
 		else if($method == "POST") {
-			$dataToStore = file_get_contents('php://input');
-			if($dataToStore != null && $dataToStore != "") {
-				$success = $this->performInsert($dataToStore);
-				if($success) {
-					return;
+			if($_SERVER['REQUEST_URI'] != "/senseapi/data" && $_SERVER['REQUEST_URI'] != "/senseapi/data/") {
+				
+				$this->_Status = 400;
+				$this->_Message = "Bad Request: The requested location is not a resource placeholder.";
+			}
+			else {
+				$dataToStore = file_get_contents('php://input');
+				if($dataToStore != null && $dataToStore != "") {
+					$success = $this->performInsert($dataToStore);
+					if($success) {
+						$this->_Message ="Data stored successfully.";
+						return;
+					}
+					else {
+						$this->_Status = 400;
+						$this->_Message = "Bad Request: Invalid JSON data provided.";
+					}
 				}
 				else {
-					$this->_Status = 404;
+					$this->_Status = 400;
+					$this->_Message = "Bad Request: Empty data provided.";
 				}
 			}
 		}
@@ -177,23 +192,16 @@ class APIController
 			if($this->_Status == 204) {
 				return;
 			}
-			$msg ="";
 			switch ($this->_Status)
 			{
-			case 404:
-				$msg = "The requested resource does not exist.";
-				if($_SERVER["REQUEST_METHOD"] == "POST") {
-					$msg = "Invalid JSON data provided.";
-				}
-				break;
 			case 405:
-				$msg = "The requested method is not allowed.";
+				$this->_Message = "The requested method is not allowed.";
 				break;
 			case 406:
-				$msg = "Accepting only 'application/json' MIME type for this resource.";
+				$this->_Message = "Accepting only 'application/json' MIME type for this resource.";
 				break;
 			case 503:
-				$msg = "The server is unavailable at this time.";
+				$this->_Message = "The server is unavailable at this time.";
 				break;
 			}
 			$this->_Body = '<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
@@ -204,7 +212,7 @@ class APIController
 					</head>
 					<body>
 					    <h1>' . $this->getStatusCodeMsg($this->_Status) . '</h1>
-					    <p>' . $msg . '</p>
+					    <p>' . $this->_Message . '</p>
 					</body>
 				    </html>';
 			echo $this->_Body;
@@ -218,6 +226,7 @@ class APIController
 		$codes = Array(
 		    200 => 'OK',
 		    204 => 'No Content',
+		    400 => 'Bad Request',
 		    404 => 'Not Found',
 		    405 => 'Method Not Allowed',
 		    406 => 'Not Acceptable',
