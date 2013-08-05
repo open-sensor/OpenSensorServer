@@ -23,8 +23,12 @@ class APIController
 
 	// Gather and check if the any of the variables that were set are of the valid/expected,
 	// as described in the appropriate URI scheme specification.
-	private function gatherGETVariablesAndValidateRequestUrl() {		
+	private function gatherGETVariablesAndValidateRequestUrl() {
 		// Check if the base url (/senseapi/data) is valid...	
+		if($_SERVER['REQUEST_URI'] == "/senseapi/data" || $_SERVER['REQUEST_URI'] == "/senseapi/data/") {
+			$this->_IsRequestUrlValid = true;
+			return;
+		}
 		if(isset($_GET['url_invalid'])) {
 			if($_GET['url_invalid'] == 'true') {
 				$this->_IsRequestUrlValid = false;
