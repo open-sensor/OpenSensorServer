@@ -148,7 +148,7 @@ class QueryBuilder
     		}
     		if($this->_dateTo != null) {
     			$this->connectWhereClauses();
-    			$this->queryWhereClause .= " ".DatabaseManager::KEY_DATETIME." <= '".$this->_dateTo."' ";
+    			$this->queryWhereClause .= " ".DatabaseManager::KEY_DATETIME." < '".$this->_dateTo."' ";
     		}
 		$this->connectWhereClauses();
 		
