@@ -1,6 +1,12 @@
 <?php
 include 'sensor_dictionary.php';
 
+/**
+* Utility class providing methods for parsing and transforming data between
+* JSON string format and PHP data structures, while also validating them.
+* used before/after INSERTS/SELECTS against the database.
+* author: Nikos Moumoulidis
+*/
 class DataParser 
 {
 	public static function fromJSONToArray($jsonDataString) {

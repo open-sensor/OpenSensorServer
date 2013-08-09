@@ -1,6 +1,12 @@
 <?php
 include 'db_interface/db_manager.php';
 
+/**
+* Class that implements a REST-styled API interfacing between the database
+* and client requests. Performs detailed HTTP request check and appropriately builds
+* HTTP responses (including headers and body).
+* author: Nikos Moumoulidis
+*/
 class APIController
 {
 	private $_Status = 200;
@@ -21,8 +27,11 @@ class APIController
 
     	}
 
-	// Gather and check if the any of the variables that were set are of the valid/expected,
-	// as described in the appropriate URI scheme specification.
+	/**
+	* Gather and check if the any of the GET variables (and the request URI), 
+	* that were set are of the valid/expected, as described in the appropriate
+	* URI scheme specification.
+	*/
 	private function gatherGETVariablesAndValidateRequestUrl() {
 		// Check if the base url (/senseapi/data) is valid...	
 		if($_SERVER['REQUEST_URI'] == "/senseapi/data" || $_SERVER['REQUEST_URI'] == "/senseapi/data/") {
@@ -45,6 +54,11 @@ class APIController
 		}
 	}
 	
+	/** 
+	* Checks for the validity of the values of the GET variables.
+	* (E.g. checks that "aggregate" is either "true" or "false" and not another invalid value,
+	* or that the "dateto" and/or "datefrom" variable contents are valid date strings).
+	*/
 	private function validateAndSetGETData($queryBuilder) {
 		for($i=0 ; $i<sizeof($this->_CurrentVarsList) ; $i++) {
 			if($this->_CurrentVarsList[$i] == "sensor_name") {
@@ -85,6 +99,8 @@ class APIController
 		return $queryBuilder;
 	}
 
+	// Uses a DatabaseManager and QueryBuilder objects to build and execute 
+	// an INSERT query, while validating adn returning the success of it.
 	private function performInsert($dataToStore) {
 		$dbManager = new DatabaseManager();
 		$queryBuilder = new QueryBuilder("insert");
@@ -106,7 +122,13 @@ class APIController
 		}
 	}
 
-
+	/**
+	* Core method of the class, responsible for handling REST requests by checking the 
+	* HTTP method, the method values, the accept header and appropriately performs any I/O
+	* operation using other components (e.g. querybuilder, databasemanager). It also sets
+	* the response status code/message/body depending on the outcome of handling that 
+	* sendResponse() will use.
+	*/
 	public function handleRequest()
 	{
 		$this->gatherGETVariablesAndValidateRequestUrl();
@@ -178,6 +200,7 @@ class APIController
 		}
 	}
 
+	// Builds an HTTP response, including headers and body, based on the results of the incoming request.
 	public function sendResponse()
 	{
 		$status_header = "HTTP/1.1 " . $this->_Status . " " . $this->getStatusCodeMsg($this->_Status);

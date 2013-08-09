@@ -1,6 +1,12 @@
 <?php
 include 'db_query_builder.php';
 
+/**
+* Core class that provides an interface against the specific MySQL database 
+* that is deployed on the server. Utilizes QueryBuilder objects and PHP mysqli_
+* methods for building and executing against the database.
+* author: Nikos Moumoulidis
+*/
 class DatabaseManager
 {
 	private $_DBCONN;

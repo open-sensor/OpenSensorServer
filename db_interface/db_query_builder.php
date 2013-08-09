@@ -1,6 +1,13 @@
 <?php
 include 'data_parser.php';
 
+/**
+* Complex class that is responsible for building SQL query strings. 
+* Provides Set/Get methods for setting up parameters and a number of private
+* methods that build different parts of the query (select, from, where join, group by)
+* based on these parameters.
+* author: Nikos Moumoulidis
+*/
 class QueryBuilder
 {
 	private $_dbManager = null;
@@ -94,6 +101,10 @@ class QueryBuilder
     		return $this->_aggregate;
     	}
 
+	/**
+	* Builds the multi-value-insert part of the INSERT query based on data array.
+	* and connects it to the rest of the query parts, returning a final SQL INSERT query.
+	*/
     	public function getInsertQuery() {
     		for($i=0 ; $i<sizeof($this->_dataToInsertArray) ; $i++) {
     			$this->queryValuesClause .= " ('". $this->_dataToInsertArray[$i]['datetime'] ."', "
@@ -110,6 +121,9 @@ class QueryBuilder
     		return $query;
     	}
 
+	/**
+	* Builds specific parts of a SELECT query, finally returning the final SQL SELECT query.
+	*/
     	public function getSelectQuery() {
     		$this->escapeParamStrings();
     		
@@ -171,6 +185,9 @@ class QueryBuilder
 		}	
     	}
 
+	/**
+	* Utility method for escaping any data values before adding them to a query string.
+	*/
     	private function escapeParamStrings() {
     		if($this->_sensorName != null) {
     			$this->_sensorName = mysqli_real_escape_string($this->_dbManager->getDBConn(), $this->_sensorName);

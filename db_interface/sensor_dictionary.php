@@ -1,4 +1,10 @@
 <?php
+
+/**
+* Struct-styled class storing a list of supported sensor type codes.
+* Used for validating sensor type values from client requests.
+* author: Nikos Moumoulidis
+*/
 class SensorDictionary
 {
 	private static $_dictionary = array("temp", "humid", "light", 
